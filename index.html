@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mazes 🎯</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        font-family: "Work Sans", sans-serif;
+        background-color: #f9fafb; /* Tailwind gray-50 */
+        color: #1f2937; /* Tailwind gray-800 */
+      }
+      h1 {
+        margin-bottom: 40px;
+        font-size: 3rem;
+        font-weight: 700;
+        color: #2563eb; /* Tailwind blue */
+      }
+      #mazeCanvas {
+        cursor: crosshair;
+      }
+      .button-container {
+        display: flex;
+        flex-direction: row;
+        gap: 10px;
+        margin-top: 20px;
+      }
+      button {
+        padding: 10px 20px;
+        background-color: #9ca3af; /* Tailwind gray-400 */
+        color: #f9fafb; /* Tailwind gray-50 */
+        border: none;
+        border-radius: 5px;
+        font-size: 16px;
+        cursor: pointer;
+        font-family: "Work Sans", sans-serif;
+      }
+      button:hover {
+        background-color: #6b7280; /* Tailwind gray-500 */
+      }
+      #solveBtn {
+        background-color: #10b981; /* Tailwind green-500 */
+      }
+      #solveBtn:hover {
+        background-color: #059669; /* Tailwind green-600 */
+      }
+      #clearBtn {
+        background-color: #f87171; /* Tailwind red-400 */
+      }
+      #clearBtn:hover {
+        background-color: #ef4444; /* Tailwind red-500 */
+      }
+      dialog {
+        background-color: #e5e7eb; /* Tailwind gray-200 */
+        color: #1f2937; /* Tailwind gray-800 */
+        border-radius: 5px;
+        padding: 20px;
+        width: 300px;
+        border: none;
+      }
+      dialog button {
+        background-color: #10b981; /* Tailwind green-500 */
+        color: #f9fafb; /* Tailwind gray-50 */
+        border: none;
+        border-radius: 5px;
+        padding: 10px;
+        cursor: pointer;
+        width: 100%;
+      }
+      dialog button:hover {
+        background-color: #059669; /* Tailwind green-600 */
+      }
+      footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 14px;
+        color: #374151; /* Tailwind gray-700 */
+      }
+
+      @media (prefers-color-scheme: dark) {
+        body {
+          background-color: #1f2937; /* Tailwind gray-800 */
+          color: #f9fafb; /* Tailwind gray-50 */
+        }
+        h1 {
+          color: #60a5fa; /* Tailwind blue-400 */
+        }
+        button {
+          background-color: #6b7280; /* Tailwind gray-500 */
+          color: #f9fafb; /* Tailwind gray-50 */
+        }
+        button:hover {
+          background-color: #4b5563; /* Tailwind gray-600 */
+        }
+        #clearBtn {
+          background-color: #f87171; /* Tailwind red-400 */
+        }
+        #clearBtn:hover {
+          background-color: #ef4444; /* Tailwind red-500 */
+        }
+        dialog {
+          background-color: #374151; /* Tailwind gray-700 */
+          color: #f9fafb; /* Tailwind gray-50 */
+        }
+        dialog button {
+          background-color: #10b981; /* Tailwind green-500 */
+        }
+        dialog button:hover {
+          background-color: #059669; /* Tailwind green-600 */
+        }
+        footer {
+          color: #d1d5db; /* Tailwind gray-300 */
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Mazes 🎯</h1>
+    <canvas id="mazeCanvas"></canvas>
+    <div class="button-container">
+      <button id="solveBtn">Solve</button>
+      <button id="clearBtn">Clear</button>
+    </div>
+    <dialog id="resultDialog">
+      <p id="resultMessage"></p>
+      <button onclick="document.getElementById('resultDialog').close()">
+        OK
+      </button>
+    </dialog>
+    <footer>Made with ChatGPT and some Debugging</footer>
+
+    <script>
+      const cellSize = 20; // Size of each cell
+      const rows = 21;
+      const cols = 21;
+      let maze = [];
+      let correctPath = [];
+      let userPath = [];
+      let isDrawing = false;
+
+      function generateMaze(rows, cols) {
+        const maze = Array.from({ length: rows }, () => Array(cols).fill("#"));
+        const directions = [
+          [0, -1],
+          [0, 1],
+          [-1, 0],
+          [1, 0], // Left, Right, Up, Down
+        ];
+
+        function shuffle(array) {
+          return array.sort(() => Math.random() - 0.5);
+        }
+
+        function isValid(x, y) {
+          return x > 0 && x < rows - 1 && y > 0 && y < cols - 1;
+        }
+
+        const entrance = [0, 1];
+        const exit = [rows - 1, cols - 2];
+        maze[entrance[0]][entrance[1]] = " ";
+        maze[exit[0]][exit[1]] = " ";
+
+        const stack = [[1, 1]];
+        maze[1][1] = " ";
+
+        while (stack.length > 0) {
+          const [x, y] = stack[stack.length - 1];
+          const shuffledDirections = shuffle([...directions]);
+          let carved = false;
+
+          for (const [dx, dy] of shuffledDirections) {
+            const nx = x + dx * 2;
+            const ny = y + dy * 2;
+
+            if (isValid(nx, ny) && maze[nx][ny] === "#") {
+              maze[x + dx][y + dy] = " ";
+              maze[nx][ny] = " ";
+              stack.push([nx, ny]);
+              carved = true;
+              break;
+            }
+          }
+
+          if (!carved) {
+            stack.pop();
+          }
+        }
+
+        return maze;
+      }
+
+      function renderMaze(ctx, maze) {
+        const isDarkMode = window.matchMedia(
+          "(prefers-color-scheme: dark)"
+        ).matches;
+
+        const wallColor = isDarkMode ? "#d1d5db" : "#4b5563"; // Tailwind gray-300 (dark), gray-600 (light)
+        const pathColor = isDarkMode ? "#374151" : "#f9fafb"; // Tailwind gray-700 (dark), gray-50 (light)
+
+        ctx.canvas.width = maze[0].length * cellSize;
+        ctx.canvas.height = maze.length * cellSize;
+
+        maze.forEach((row, r) => {
+          row.forEach((cell, c) => {
+            ctx.fillStyle = cell === "#" ? wallColor : pathColor;
+            ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+          });
+        });
+
+        // Draw circles for "Start" and "End"
+        const startX = 1.5 * cellSize;
+        const startY = 0.5 * cellSize;
+        const endX = (cols - 1.5) * cellSize;
+        const endY = (rows - 0.5) * cellSize;
+
+        // Start circle (green)
+        ctx.fillStyle = "#10B981"; // Tailwind green-400
+        ctx.beginPath();
+        ctx.arc(startX, startY, cellSize / 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // End circle (red)
+        ctx.fillStyle = "#EF4444"; // Tailwind red-500
+        ctx.beginPath();
+        ctx.arc(endX, endY, cellSize / 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function findSolutionPath(maze) {
+        const solution = [];
+        const directions = [
+          [0, -1],
+          [0, 1],
+          [-1, 0],
+          [1, 0], // Left, Right, Up, Down
+        ];
+
+        function isValid(x, y) {
+          return x >= 0 && x < rows && y >= 0 && y < cols && maze[x][y] === " ";
+        }
+
+        function dfs(x, y) {
+          if (x === rows - 1 && y === cols - 2) {
+            solution.push([x, y]);
+            return true;
+          }
+
+          maze[x][y] = "*"; // Mark as visited
+          for (const [dx, dy] of directions) {
+            const nx = x + dx;
+            const ny = y + dy;
+            if (isValid(nx, ny)) {
+              if (dfs(nx, ny)) {
+                solution.push([x, y]);
+                return true;
+              }
+            }
+          }
+          return false;
+        }
+
+        function cleanup() {
+          // Remove "*" markers
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              if (maze[r][c] === "*") {
+                maze[r][c] = " ";
+              }
+            }
+          }
+        }
+
+        dfs(0, 1);
+        cleanup(); // Clear the visited markers
+        return solution.reverse();
+      }
+
+      function handleDrawing(event, ctx) {
+        const rect = ctx.canvas.getBoundingClientRect();
+        const x = Math.floor((event.clientY - rect.top) / cellSize);
+        const y = Math.floor((event.clientX - rect.left) / cellSize);
+
+        // Ensure we draw only on open spaces (' ') and only if adjacent to already drawn cells
+        if (x >= 0 && x < rows && y >= 0 && y < cols) {
+          // Check bounds
+          if (
+            maze[x][y] === " " &&
+            !userPath.some(([px, py]) => px === x && py === y)
+          ) {
+            const adjacent = [
+              [-1, 0],
+              [1, 0],
+              [0, -1],
+              [0, 1], // Up, Down, Left, Right
+            ];
+            const isAdjacent = userPath.some(([px, py]) =>
+              adjacent.some(([dx, dy]) => px + dx === x && py + dy === y)
+            );
+
+            if (isAdjacent || (x === 0 && y === 1)) {
+              // Allow start to be drawn
+              userPath.push([x, y]);
+              // ctx.fillStyle = "red";
+              ctx.fillStyle = "rgba(248, 113, 113, 0.7)"; // Tailwind red-400, semi-transparent
+              ctx.fillRect(y * cellSize, x * cellSize, cellSize, cellSize);
+            }
+          }
+        }
+      }
+
+      function clearDrawing(ctx) {
+        userPath = [];
+        renderMaze(ctx, maze); // Redraw the maze without the path
+      }
+
+      function showResult(message) {
+        const resultMessage = document.getElementById("resultMessage");
+        resultMessage.textContent = message;
+        document.getElementById("resultDialog").showModal();
+      }
+
+      function checkSolution() {
+        correctPath = findSolutionPath(maze);
+
+        const simplifiedUserPath = [
+          ...new Set(userPath.map(JSON.stringify)),
+        ].map(JSON.parse);
+        const simplifiedCorrectPath = [
+          ...new Set(correctPath.map(JSON.stringify)),
+        ].map(JSON.parse);
+
+        if (
+          JSON.stringify(simplifiedUserPath) ===
+          JSON.stringify(simplifiedCorrectPath)
+        ) {
+          showResult("🎉 Congratulations! You solved the maze!");
+        } else {
+          showResult("❌ Incorrect path. Try again!");
+        }
+      }
+
+      // Initialize
+      const canvas = document.getElementById("mazeCanvas");
+      const ctx = canvas.getContext("2d");
+      maze = generateMaze(rows, cols);
+      renderMaze(ctx, maze);
+
+      canvas.addEventListener("mousedown", () => {
+        isDrawing = true;
+      });
+      canvas.addEventListener("mouseup", () => {
+        isDrawing = false;
+      });
+      canvas.addEventListener("mousemove", (event) => {
+        if (isDrawing) {
+          handleDrawing(event, ctx);
+        }
+      });
+
+      document
+        .getElementById("solveBtn")
+        .addEventListener("click", checkSolution);
+      document
+        .getElementById("clearBtn")
+        .addEventListener("click", () => clearDrawing(ctx));
+    </script>
+  </body>
+</html>
