@@ -370,6 +370,34 @@
         }
       });
 
+      // Touch event listeners for start, move, and end actions
+      canvas.addEventListener("touchstart", (event) => {
+        event.preventDefault();  // Prevent default behavior (scroll/zoom)
+        isDrawing = true;  // Start drawing
+
+        const touch = event.touches[0];  // Get the first touch point
+        handleDrawing({
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+        }, ctx);
+      }, { passive: false });
+
+      canvas.addEventListener("touchmove", (event) => {
+        event.preventDefault();  // Prevent default behavior (scroll/zoom)
+        if (isDrawing) {
+          const touch = event.touches[0];  // Get the first touch point
+          handleDrawing({
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+          }, ctx);
+        }
+      }, { passive: false });
+
+      canvas.addEventListener("touchend", (event) => {
+        event.preventDefault();  // Prevent default behavior
+        isDrawing = false;  // Stop drawing
+      }, { passive: false });
+
       document
         .getElementById("solveBtn")
         .addEventListener("click", checkSolution);
